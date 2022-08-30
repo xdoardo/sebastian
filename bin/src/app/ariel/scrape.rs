@@ -33,15 +33,50 @@ pub(crate) struct Scrape {
 
 impl Ariel {
     pub(crate) fn scrape(&mut self, auto: bool, output: String, url: String) -> anyhow::Result<()> {
-        let page = self.nav.as_mut().unwrap().page_from_url(url)?;
+        let page = self.nav.as_mut().unwrap().page_from_url(url.clone())?;
         log::debug!("page: {:?}", page);
         let mut to_ask = page.get_data();
-        let mut stack = self.nav.as_mut().unwrap().get_children(page);
 
-        while stack.len() != 0 {
-            let child_page = stack.pop().unwrap();
-            to_ask.append(&mut child_page.get_data());
-            stack.append(&mut self.nav.as_mut().unwrap().get_children(child_page))
+        if auto {
+            let mut stack = self.nav.as_mut().unwrap().get_children(page);
+
+            while stack.len() != 0 {
+                let child_page = stack.pop().unwrap();
+                log::info!("getting data from child {}", child_page.url);
+                to_ask.append(&mut child_page.get_data());
+                stack.append(&mut self.nav.as_mut().unwrap().get_children(child_page));
+            }
+        } else {
+            let mut stack;
+
+            // This special behaviour is definitely annoying.
+            if url.clone() == ARIEL_SITEMAP.home_page_url {
+                let top_children = self.nav.as_mut().unwrap().get_children(page);
+                let mut opts = vec![];
+                for child in top_children {
+                    opts.append(&mut self.nav.as_mut().unwrap().get_children(child));
+                }
+                stack = inquire::MultiSelect::new("select pages to follow", opts).prompt()?;
+            } else {
+                stack = inquire::MultiSelect::new(
+                    "select pages to follow",
+                    self.nav.as_mut().unwrap().get_children(page),
+                )
+                .prompt()?;
+            }
+
+            while stack.len() != 0 {
+                let child_page = stack.pop().unwrap();
+                log::info!("getting data from child {}", child_page.url);
+                to_ask.append(&mut child_page.get_data());
+                stack.append(
+                    &mut inquire::MultiSelect::new(
+                        "select pages to follow",
+                        self.nav.as_mut().unwrap().get_children(child_page),
+                    )
+                    .prompt()?,
+                );
+            }
         }
 
         let select = inquire::MultiSelect::new("Select data to scrape: ", to_ask);

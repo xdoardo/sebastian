@@ -59,12 +59,17 @@ impl Ariel {
             username_prompt.prompt()?
         };
 
-        let password = if let Some(password) = password && auto{
-            password
+        let pwd;
+        if let Some(password) = password {
+            if auto {
+                pwd = password;
+            } else {
+                pwd = inquire::Password::new("password:").prompt()?
+            }
         } else {
-            inquire::Password::new("password:").prompt()?
-        };
-
+            pwd = inquire::Password::new("password:").prompt()?
+        }
+        let password = pwd;
         let config = ArielUserConfig { username, password };
         self.nav = Some(ArielNavigator::new(config.clone()));
 

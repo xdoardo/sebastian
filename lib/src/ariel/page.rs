@@ -186,7 +186,7 @@ impl ArielPage {
             .tag("a")
             .attr(
                 "href",
-                regex::Regex::new(r".*//.*\.ctu\.unimi\.it.*").unwrap(),
+                regex::Regex::new(r".*//.*\.ariel\.ctu\.unimi\.it.*").unwrap(),
             )
             .find_all();
         let mut res = vec![];
@@ -203,6 +203,34 @@ impl ArielPage {
 
     pub fn get_data(&self) -> Vec<ArielPageData> {
         vec![]
+    }
+}
+
+impl std::fmt::Display for ArielPage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let proj_title = if let Some(proj_title) = self
+            .soup
+            .tag("span")
+            .attr("id", "ctl24_lblProjectTitle")
+            .find()
+        {
+            proj_title.text()
+        } else {
+            String::new()
+        };
+
+        if let Some(navbar) = self.soup.tag("ul").attr("class", "nav").find() {
+            if let Some(li) = navbar.tag("li").attr("class", "active").find() {
+                if let Some(a) = li
+                    .tag("a")
+                    .attr("href", regex::Regex::new(".*").unwrap())
+                    .find()
+                {
+                    write!(f, "{} - {}", proj_title, a.text())?;
+                }
+            }
+        }
+        Ok(())
     }
 }
 

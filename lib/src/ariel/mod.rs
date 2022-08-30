@@ -35,17 +35,25 @@ impl ArielNavigator {
     }
 
     pub fn page_from_url(&mut self, url: String) -> anyhow::Result<ArielPage> {
-        let (raw, url) = self.middleware.get(url.clone(), true)?;
+        let (url, raw) = self.middleware.get(url.clone(), true)?;
         log::debug!("making page from raw for url {}", url);
         Ok(ArielPage::from_raw(raw, url))
     }
 
     pub fn get_children(&mut self, page: ArielPage) -> Vec<ArielPage> {
         let children_urls = page.get_children();
-        log::debug!("got urls {:?} for page {:?}", children_urls, page);
+        if children_urls.len() == 1 && children_urls[0] == format!("{}v5", page.url.clone()) {
+            let url = children_urls[0].clone();
+            if let Ok((url, raw)) = self.middleware.get(url, true) {
+                log::debug!("making page from raw for url {}", url);
+                return vec![ArielPage::from_raw(raw, url)];
+            }
+        }
+
+        log::info!("got urls {:?} for page {}", children_urls, page.url);
         let mut res = vec![];
         for url in children_urls {
-            if let Ok((raw, url)) = self.middleware.get(url.clone(), false) {
+            if let Ok((url, raw)) = self.middleware.get(url.clone(), true) {
                 log::debug!("making page from raw for url {}", url);
                 res.push(ArielPage::from_raw(raw, url));
             }

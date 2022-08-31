@@ -9,7 +9,7 @@ pub(crate) struct Search {
 }
 
 impl Ariel {
-    pub(crate) fn search(&mut self, name: String) -> anyhow::Result<()> {
+    pub(crate) async fn search(&mut self, name: String) -> anyhow::Result<()> {
         log::info!("search '{}'", name);
         if self.nav.is_none() || self.user_config.is_none() {
             println!("{:?}", self);
@@ -25,7 +25,7 @@ impl Ariel {
         );
         pb.set_message(format!("searching courses for '{}'...", name.clone()));
 
-        let pages = self.nav.as_mut().unwrap().search(name.as_str())?;
+        let pages = self.nav.as_mut().unwrap().search(name.as_str()).await?;
         let pages = pages.iter().filter(|p| p.can_access).collect::<Vec<_>>();
 
         pb.set_style(
@@ -50,7 +50,8 @@ impl Ariel {
         let action = inquire::Select::new("Select action", vec!["scrape", "print"]).prompt()?;
         if action == "scrape" {
             for page in ans {
-                self.scrape(true, OUTPUT_DIR.to_string(), page.url.to_string())?;
+                self.scrape(true, OUTPUT_DIR.to_string(), page.url.to_string())
+                    .await?;
             }
         } else {
         }

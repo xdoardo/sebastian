@@ -42,7 +42,7 @@ pub(crate) enum ArielAction {
 }
 
 impl Ariel {
-    pub(crate) fn run(
+    pub(crate) async fn run(
         &mut self,
         app_config: AppConfig,
         user_config: Option<ArielUserConfig>,
@@ -67,11 +67,11 @@ impl Ariel {
 
                 if let Some(cfg) = &self.user_config {
                     self.nav = Some(ArielNavigator::new(cfg.clone()));
-                    self.nav.as_mut().unwrap().login()?
+                    self.nav.as_mut().unwrap().login().await?
                 } else {
-                    self.login(None, None, false)?;
+                    self.login(None, None, false).await?;
                 };
-                self.scrape(auto, output, url)?
+                self.scrape(auto, output, url).await?
             }
             ArielAction::Init(login::Login {
                 ref username,
@@ -82,7 +82,7 @@ impl Ariel {
                 } else {
                     None
                 };
-                self.login(username, password.clone(), false)?;
+                self.login(username, password.clone(), false).await?;
                 self.app_config.as_mut().unwrap().save = true;
             }
 
@@ -90,11 +90,11 @@ impl Ariel {
                 let name = name.clone();
                 if let Some(cfg) = &self.user_config {
                     self.nav = Some(ArielNavigator::new(cfg.clone()));
-                    self.nav.as_mut().unwrap().login()?
+                    self.nav.as_mut().unwrap().login().await?
                 } else {
-                    self.login(None, None, false)?;
+                    self.login(None, None, false).await?;
                 };
-                self.search(name)?
+                self.search(name).await?
             }
         };
 

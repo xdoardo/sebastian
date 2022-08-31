@@ -21,7 +21,7 @@ pub enum UnimiaAction {
 }
 
 impl Unimia {
-    pub(crate)  fn run(
+    pub(crate) async fn run(
         &mut self,
         app_config: AppConfig,
         user_config: Option<UnimiaUserConfig>,

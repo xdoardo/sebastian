@@ -1,10 +1,8 @@
+use std::time::Duration;
+
 use super::Ariel;
 use crate::app::CURRENT_DIR;
-use sebastian_core::ariel::{
-    map::ArielSitemap,
-    page::{ArielPage, ArielPageData},
-    ArielNavigator,
-};
+use sebastian_core::ariel::map::ArielSitemap;
 
 lazy_static::lazy_static! {
     static ref OUTPUT_DIR: String = {
@@ -32,49 +30,74 @@ pub(crate) struct Scrape {
 }
 
 impl Ariel {
-    pub(crate) fn scrape(&mut self, auto: bool, output: String, url: String) -> anyhow::Result<()> {
-        let page = self.nav.as_mut().unwrap().page_from_url(url.clone())?;
+    pub(crate) async fn scrape(
+        &mut self,
+        auto: bool,
+        output: String,
+        url: String,
+    ) -> anyhow::Result<()> {
+        let page = self
+            .nav
+            .as_mut()
+            .unwrap()
+            .page_from_url(url.clone())
+            .await?;
         log::debug!("page: {:?}", page);
         let mut to_ask = page.get_data();
 
         if auto {
-            let mut stack = self.nav.as_mut().unwrap().get_children(page);
+            let mut stack = self.nav.as_mut().unwrap().get_children(page).await;
 
             while stack.len() != 0 {
                 let child_page = stack.pop().unwrap();
                 log::info!("getting data from child {}", child_page.url);
                 to_ask.append(&mut child_page.get_data());
-                stack.append(&mut self.nav.as_mut().unwrap().get_children(child_page));
+                stack.append(&mut self.nav.as_mut().unwrap().get_children(child_page).await);
             }
         } else {
             let mut stack;
+            let pb = indicatif::ProgressBar::new_spinner();
+            pb.enable_steady_tick(Duration::from_millis(120));
+            pb.set_style(
+                indicatif::ProgressStyle::with_template("{prefix:.bold.dim} {spinner} {wide_msg}")
+                    .unwrap()
+                    .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
+            );
+            pb.set_message(format!("searching pages from {}...", url));
 
-            // This special behaviour is definitely annoying.
-            if url.clone() == ARIEL_SITEMAP.home_page_url {
-                let top_children = self.nav.as_mut().unwrap().get_children(page);
-                let mut opts = vec![];
-                for child in top_children {
-                    opts.append(&mut self.nav.as_mut().unwrap().get_children(child));
-                }
-                stack = inquire::MultiSelect::new("select pages to follow", opts).prompt()?;
-            } else {
-                stack = inquire::MultiSelect::new(
-                    "select pages to follow",
-                    self.nav.as_mut().unwrap().get_children(page),
-                )
-                .prompt()?;
-            }
+            let children = self.nav.as_mut().unwrap().get_children(page).await;
+
+            pb.set_style(indicatif::ProgressStyle::with_template("").unwrap());
+            pb.finish();
+
+            stack = inquire::MultiSelect::new("select pages to follow", children).prompt()?;
 
             while stack.len() != 0 {
                 let child_page = stack.pop().unwrap();
                 log::info!("getting data from child {}", child_page.url);
                 to_ask.append(&mut child_page.get_data());
-                stack.append(
-                    &mut inquire::MultiSelect::new(
-                        "select pages to follow",
-                        self.nav.as_mut().unwrap().get_children(child_page),
+
+                let pb = indicatif::ProgressBar::new_spinner();
+                pb.enable_steady_tick(Duration::from_millis(120));
+                pb.set_style(
+                    indicatif::ProgressStyle::with_template(
+                        "{prefix:.bold.dim} {spinner} {wide_msg}",
                     )
-                    .prompt()?,
+                    .unwrap()
+                    .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
+                );
+                pb.set_message(format!("searching pages from {}...", child_page.url));
+                let children = self.nav.as_mut().unwrap().get_children(child_page).await;
+                pb.set_message(format!("searching pages from {}...", url));
+                pb.set_style(indicatif::ProgressStyle::with_template("").unwrap());
+
+                pb.finish();
+
+                if children.is_empty() {
+                    continue;
+                }
+                stack.append(
+                    &mut inquire::MultiSelect::new("select pages to follow", children).prompt()?,
                 );
             }
         }

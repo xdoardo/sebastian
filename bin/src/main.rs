@@ -4,7 +4,8 @@ use app::{Command, UserConfig};
 use clap::Parser;
 mod app;
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> anyhow::Result<()> {
     env_logger::init();
     log::trace!("starting app!");
     let app = app::App::parse();
@@ -27,19 +28,19 @@ fn main() -> anyhow::Result<()> {
     let app_config = match app.action {
         Command::Ariel(mut a) => {
             log::debug!("subcommand is ariel");
-            let (app_config, ariel_config) = a.run(app_config, config.ariel)?;
+            let (app_config, ariel_config) = a.run(app_config, config.ariel).await?;
             config.ariel = Some(ariel_config);
             app_config
         }
         Command::Time(mut t) => {
             log::debug!("subcommand is time");
-            let (app_config, time_config) = t.run(app_config, config.time)?;
+            let (app_config, time_config) = t.run(app_config, config.time).await?;
             config.time = Some(time_config);
             app_config
         }
         Command::Unimia(mut u) => {
             log::debug!("subcommand is mia");
-            let (app_config, mia_config) = u.run(app_config, config.mia)?;
+            let (app_config, mia_config) = u.run(app_config, config.mia).await?;
             config.mia = Some(mia_config);
             app_config
         }

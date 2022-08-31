@@ -15,7 +15,7 @@ pub(crate) struct Login {
 }
 
 impl Ariel {
-    pub(crate) fn login(
+    pub(crate) async fn login(
         &mut self,
         username: Option<String>,
         password: Option<String>,
@@ -81,7 +81,7 @@ impl Ariel {
                 .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
         );
         pb.set_message("logging in...");
-        let outcome = self.nav.as_mut().unwrap().login();
+        let outcome = self.nav.as_mut().unwrap().login().await;
         match outcome {
             Ok(_) => {
                 pb.set_style(

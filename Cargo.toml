@@ -4,5 +4,3 @@ members = [
     "lib",
 ]
 
-[profile.release]
-debug = true

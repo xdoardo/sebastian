@@ -22,10 +22,10 @@ pub enum TimeTableAction {
 }
 
 impl Time {
-    pub(crate)  fn run(
+    pub(crate) async fn run(
         &mut self,
         app_config: AppConfig,
-        user_config: Option<TimeTableConfig>
+        user_config: Option<TimeTableConfig>,
     ) -> anyhow::Result<(AppConfig, TimeTableConfig)> {
         todo!()
     }

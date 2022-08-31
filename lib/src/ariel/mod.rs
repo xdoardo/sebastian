@@ -25,37 +25,42 @@ impl ArielNavigator {
         }
     }
 
-    pub fn login(&mut self) -> anyhow::Result<()> {
-        self.middleware.login()
+    pub async fn login(&mut self) -> anyhow::Result<()> {
+        self.middleware.login().await
     }
 
-    pub fn search(&mut self, course_name: &str) -> anyhow::Result<Vec<ArielTitlePage>> {
+    pub async fn search(&mut self, course_name: &str) -> anyhow::Result<Vec<ArielTitlePage>> {
         log::info!("passing '{}' to middleware", course_name);
-        self.middleware.search(course_name)
+        self.middleware.search(course_name).await
     }
 
-    pub fn page_from_url(&mut self, url: String) -> anyhow::Result<ArielPage> {
-        let (url, raw) = self.middleware.get(url.clone(), true)?;
+    pub async fn page_from_url(&mut self, url: String) -> anyhow::Result<ArielPage> {
+        let (url, raw) = self.middleware.get(url.clone()).await?;
         log::debug!("making page from raw for url {}", url);
-        Ok(ArielPage::from_raw(raw, url))
+        ArielPage::from_raw(raw, url)
     }
 
-    pub fn get_children(&mut self, page: ArielPage) -> Vec<ArielPage> {
+    pub async fn get_children(&mut self, page: ArielPage) -> Vec<ArielPage> {
         let children_urls = page.get_children();
         if children_urls.len() == 1 && children_urls[0] == format!("{}v5", page.url.clone()) {
             let url = children_urls[0].clone();
-            if let Ok((url, raw)) = self.middleware.get(url, true) {
+            if let Ok((url, raw)) = self.middleware.get(url).await {
                 log::debug!("making page from raw for url {}", url);
-                return vec![ArielPage::from_raw(raw, url)];
+                if let Ok(page) = ArielPage::from_raw(raw, url) {
+                    return vec![page];
+                }
+                return vec![];
             }
         }
 
         log::info!("got urls {:?} for page {}", children_urls, page.url);
         let mut res = vec![];
         for url in children_urls {
-            if let Ok((url, raw)) = self.middleware.get(url.clone(), true) {
+            if let Ok((url, raw)) = self.middleware.get(url.clone()).await {
                 log::debug!("making page from raw for url {}", url);
-                res.push(ArielPage::from_raw(raw, url));
+                if let Ok(page) = ArielPage::from_raw(raw, url) {
+                    res.push(page);
+                }
             }
         }
         res

@@ -1,6 +1,6 @@
 use self::{
     mware::{http::HttpArielMiddleware, ArielMiddleware},
-    page::{ArielPage, ArielTitlePage},
+    page::{ArielPage, ArielPageData, ArielTitlePage},
 };
 
 pub mod map;
@@ -64,5 +64,20 @@ impl ArielNavigator {
             }
         }
         res
+    }
+
+    pub async fn download<'a>(
+        &mut self,
+        path: String,
+        data: ArielPageData,
+        chunk_done_size_chan: std::sync::mpsc::Sender<u64>,
+    ) -> anyhow::Result<()> {
+        self.middleware
+            .download(path, data, chunk_done_size_chan)
+            .await
+    }
+
+    pub async fn get_size<'a>(&mut self, data: &'a ArielPageData) -> anyhow::Result<u64> {
+        self.middleware.get_size(data).await
     }
 }

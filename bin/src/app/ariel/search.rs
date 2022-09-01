@@ -12,7 +12,6 @@ impl Ariel {
     pub(crate) async fn search(&mut self, name: String) -> anyhow::Result<()> {
         log::info!("search '{}'", name);
         if self.nav.is_none() || self.user_config.is_none() {
-            println!("{:?}", self);
             anyhow::bail!("cannot use uninitialized subcommand!")
         };
 
@@ -44,8 +43,7 @@ impl Ariel {
         }
         let ans = inquire::MultiSelect::new("Select the courses to search:", pages).prompt()?;
         if ans.len() == 0 {
-            println!("No course selected!");
-            return Ok(());
+            anyhow::bail!("No course selected!")
         }
         let action = inquire::Select::new("Select action", vec!["scrape", "print"]).prompt()?;
         if action == "scrape" {

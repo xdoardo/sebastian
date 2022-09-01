@@ -80,7 +80,6 @@ impl ArielSearchPage {
                             url = child_href
                         } else if teacher_url_regex.is_match(child_href.as_str()) {
                             holders.push(child_href);
-                            println!("teachers inner text: {}", child.inner_text(parser))
                         } else if child_class == "bg-tag-success" {
                             can_access = true
                         }
@@ -216,16 +215,6 @@ impl ArielPage {
             ArielPageKind::SiteAmbient => {
                 let parser = self.soup.get_ref().parser();
                 let mut site_title = String::new();
-                if let Some(title) = self
-                    .soup
-                    .get_ref()
-                    .get_element_by_id("ctl24_lblProjectTitle")
-                {
-                    if let Some(title) = title.get(parser) {
-                        let title = title.inner_text(parser);
-                        site_title = title.trim().to_string();
-                    }
-                }
 
                 for h1 in self.soup.get_ref().get_elements_by_class_name("arielTitle") {
                     if let Some(h1) = h1.get(parser) {
@@ -257,11 +246,6 @@ impl ArielPage {
         }
     }
 
-    pub fn get_data(&self) -> Vec<ArielPageData> {
-        // @TODO!
-        vec![]
-    }
-
     fn children_ariel_home(&self) -> Vec<String> {
         let parser = self.soup.get_ref().parser();
         let mut res = vec![];
@@ -290,7 +274,7 @@ impl ArielPage {
 
     fn children_site_home_page(&self) -> Vec<String> {
         let parser = self.soup.get_ref().parser();
-        let mut res = vec![];
+        let res = vec![];
         for ul in self.soup.get_ref().get_elements_by_class_name("navbar-nav") {
             if let Some(ul) = ul.get(parser) {
                 if let Some(children) = ul.children() {
@@ -360,23 +344,181 @@ impl ArielPage {
 
         res
     }
+
+    pub fn get_data(&self) -> Vec<ArielPageData> {
+        let mut res = vec![];
+        let parser = self.soup.get_ref().parser();
+
+        for child in self.soup.get_ref().children() {
+            if let Some(child) = child.get(parser) {
+                if let tl::Node::Tag(child) = child {
+                    if child.name() == "html" {
+                        for child in child.children().all(parser) {
+                            if let tl::Node::Tag(child) = child {
+                                log::info!("\n\n\ndoing child {:?}\n\n\n", child);
+                                if child.name() == "tr" {
+                                    let mut title = String::new();
+
+                                    for child in child.children().all(parser) {
+                                        if let tl::Node::Tag(child) = child {
+                                            if child.name() == "h2" {
+                                                if let Some(Some(class)) =
+                                                    child.attributes().get("class")
+                                                {
+                                                    if class.as_utf8_str().contains("arielTitle") {
+                                                        title = child
+                                                            .inner_text(parser)
+                                                            .to_string()
+                                                            .trim()
+                                                            .to_string()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    log::info!("thread title is {}", title);
+                                    for child in child.children().all(parser) {
+                                        if let tl::Node::Tag(child) = child {
+                                            if let Some(Some(class)) =
+                                                child.attributes().get("class")
+                                            {
+                                                if class.as_utf8_str().contains("filename") {
+                                                    if let Some(Some(href)) =
+                                                        child.attributes().get("href")
+                                                    {
+                                                        let name =
+                                                            child.inner_text(parser).to_string();
+                                                        let url = self
+                                                            .url
+                                                            .parse::<url::Url>()
+                                                            .unwrap()
+                                                            .join(
+                                                                &href
+                                                                    .as_utf8_str()
+                                                                    .replace("amp;", ""),
+                                                            )
+                                                            .unwrap();
+                                                        let kind = ArielPageDataKind::Generic;
+                                                        res.push(ArielPageData {
+                                                            from_site: self.get_site_name(),
+                                                            from_ambient: self.get_title(),
+                                                            from_thread: title.clone(),
+                                                            name,
+                                                            url,
+                                                            kind,
+                                                        })
+                                                    }
+                                                }
+                                            } else if let Some(Some(r#type)) =
+                                                child.attributes().get("type")
+                                            {
+                                                if r#type.as_utf8_str().contains("video") {
+                                                    if let Some(Some(href)) =
+                                                        child.attributes().get("src")
+                                                    {
+                                                        let url = href
+                                                            .as_utf8_str()
+                                                            .parse::<url::Url>()
+                                                            .unwrap();
+                                                        res.push(ArielPageData {
+                                                            from_site: self.get_site_name(),
+                                                            from_ambient: self.get_title(),
+                                                            from_thread: title.clone(),
+                                                            name: format!("recording_{}", title),
+                                                            url,
+                                                            kind: ArielPageDataKind::LessonStream,
+                                                        })
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        log::info!("{} produced {:?}", self.url, res);
+        res
+    }
+
+    pub fn get_site_name(&self) -> String {
+        let parser = self.soup.get_ref().parser();
+        if let Some(title) = self
+            .soup
+            .get_ref()
+            .get_element_by_id("ctl24_lblProjectTitle")
+        {
+            if let Some(title) = title.get(parser) {
+                let title = title.inner_text(parser);
+                return title.trim().to_string();
+            }
+        }
+        return String::new();
+    }
 }
 
 impl std::fmt::Display for ArielPage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.get_title())
+        write!(f, "[{}] - {}", self.get_site_name(), self.get_title())
     }
 }
 
 #[derive(Debug, Clone)]
+pub enum ArielPageDataKind {
+    LessonStream,
+    Generic,
+}
+
+#[derive(Debug, Clone)]
 pub struct ArielPageData {
+    pub from_site: String,
+    pub from_ambient: String,
+    pub from_thread: String,
     pub name: String,
     pub url: Url,
-    pub origin: Rc<ArielPage>,
+    pub kind: ArielPageDataKind,
 }
 
 impl std::fmt::Display for ArielPageData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(f, "{} (url: {})", self.get_name(), self.url)
+    }
+}
+
+impl ArielPageData {
+    pub fn get_name(&self) -> String {
+        match self.kind {
+            ArielPageDataKind::LessonStream => {
+                let rand_id = rand::random::<i32>();
+                let filename = format!("{}{rand_id}", self.name);
+
+                let title_regex = regex::Regex::new(r".*/vod/(.+):(.+)/manifest.m3u8").unwrap();
+                if let Some(matches) = title_regex.captures(&self.url.to_string()) {
+                    let ext = matches.get(1);
+                    let vod_name = matches.get(2);
+                    if let Some(vod_name) = vod_name {
+                        let vod_name = vod_name.as_str().to_string();
+                        let (vod_name, ext) =
+                            if let Some((vod_name, ext)) = vod_name.rsplit_once('.') {
+                                (vod_name, format!(".{ext}"))
+                            } else {
+                                (vod_name.as_str(), String::new())
+                            };
+
+                        format!("{}{ext}", heck::AsSnakeCase(vod_name).to_string())
+                    } else if let Some(ext) = ext {
+                        format!("{filename}.{}", ext.as_str())
+                    } else {
+                        filename
+                    }
+                } else {
+                    filename
+                }
+            }
+            ArielPageDataKind::Generic => self.name.clone(),
+        }
     }
 }

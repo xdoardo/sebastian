@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{fmt::Write, thread, time::Duration};
 
 use super::Ariel;
 use crate::app::CURRENT_DIR;
@@ -33,7 +33,7 @@ impl Ariel {
     pub(crate) async fn scrape(
         &mut self,
         auto: bool,
-        output: String,
+        out_path: String,
         url: String,
     ) -> anyhow::Result<()> {
         let page = self
@@ -55,7 +55,7 @@ impl Ariel {
                 stack.append(&mut self.nav.as_mut().unwrap().get_children(child_page).await);
             }
         } else {
-            let mut stack;
+            let mut stack = vec![];
             let pb = indicatif::ProgressBar::new_spinner();
             pb.enable_steady_tick(Duration::from_millis(120));
             pb.set_style(
@@ -70,7 +70,9 @@ impl Ariel {
             pb.set_style(indicatif::ProgressStyle::with_template("").unwrap());
             pb.finish();
 
-            stack = inquire::MultiSelect::new("select pages to follow", children).prompt()?;
+            if !children.is_empty() {
+                stack = inquire::MultiSelect::new("select pages to follow", children).prompt()?;
+            }
 
             while stack.len() != 0 {
                 let child_page = stack.pop().unwrap();
@@ -102,7 +104,77 @@ impl Ariel {
             }
         }
 
-        let select = inquire::MultiSelect::new("Select data to scrape: ", to_ask);
+        if to_ask.is_empty() {
+            anyhow::bail!("Found no data to scrape!")
+        }
+
+        let selected = inquire::MultiSelect::new("Select data to scrape: ", to_ask).prompt()?;
+
+        if selected.len() == 0 {
+            anyhow::bail!("No data selected!")
+        }
+
+        let ticks = ["🌍 ", "🌎 ", "🌏 "];
+        let progs = "█▓▒░  ";
+        let sized_bar_style = indicatif::ProgressStyle::with_template(
+            "{spinner} [{elapsed_precise}] {msg} [{bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})",
+        )
+        .unwrap()
+        .with_key(
+            "eta",
+            |state: &indicatif::ProgressState, w: &mut dyn Write| {
+                write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+            },
+        )
+        .progress_chars(progs)
+        .tick_strings(&ticks);
+
+        let unsized_bar_style = indicatif::ProgressStyle::with_template(
+            "{spinner} [{elapsed_precise}] {msg} {total_bytes}",
+        )
+        .unwrap()
+        .progress_chars(progs)
+        .tick_strings(&ticks);
+
+        let mut chunk_done_size_cx;
+        let mut chunk_done_size_px;
+
+        for d in selected {
+            let size = self.nav.as_mut().unwrap().get_size(&d).await?;
+            let style = if size != 0 {
+                sized_bar_style.clone()
+            } else {
+                unsized_bar_style.clone()
+            };
+            let name = d.get_name();
+
+            (chunk_done_size_px, chunk_done_size_cx) = std::sync::mpsc::channel::<u64>();
+
+            let c = thread::spawn(move || {
+                let pb = indicatif::ProgressBar::new(size);
+                let mut chunk_bytes: u64 = 0;
+
+                pb.set_style(style.clone());
+                pb.set_position(0);
+                pb.set_message(format!("fetch {}", name));
+
+                for bs in chunk_done_size_cx {
+                    chunk_bytes += bs;
+                    pb.set_position(chunk_bytes.try_into().unwrap());
+                    pb.set_length(chunk_bytes)
+                }
+
+                pb.finish_with_message(format!("downloaded {}", name));
+            });
+
+            self.nav
+                .as_mut()
+                .unwrap()
+                .download(out_path.clone(), d.clone(), chunk_done_size_px)
+                .await?;
+
+            c.join().expect("child panicked");
+        }
 
         Ok(())
     }

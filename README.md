@@ -26,3 +26,13 @@ app
     ├── init         Initialize your configuration.
     └── show         Show your unimia status. 
 ```
+
+## Screenshots 
+### Select courses to scrape from root ( -- or specify an URL yourself!)
+![select_course](https://raw.githubusercontent.com/ecmma/sebastian/master/screenshots/scrape_root.png)
+
+### Select data to scrape
+![select_data](https://raw.githubusercontent.com/ecmma/sebastian/master/screenshots/select_scrape.jpg)
+
+### Download!
+![download](https://raw.githubusercontent.com/ecmma/sebastian/master/screenshots/download.jpg)

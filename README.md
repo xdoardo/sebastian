@@ -1,7 +1,11 @@
 # Sebastian 
+<p align="center">
+  <img width="300" height="300" src="https://raw.githubusercontent.com/ecmma/sebastian/master/imgs/dalle_sebastian.png">
+</p>
 > **se·bas·tian** - *sɪˈbæstɪən*  
 > A simple tool used to access UniMi services -- mainly
 > [ariel](https://ariel.unimi.it/), but not only -- via CLI.
+
 
 ### Important: state
 First of all, thank you for your interest.
@@ -29,10 +33,10 @@ app
 
 ## Screenshots 
 ### Select courses to scrape from root ( -- or specify an URL yourself!)
-![select_course](https://raw.githubusercontent.com/ecmma/sebastian/master/screenshots/scrape_root.png)
+![select_course](https://raw.githubusercontent.com/ecmma/sebastian/master/imgs/scrape_root.png)
 
 ### Select data to scrape
-![select_data](https://raw.githubusercontent.com/ecmma/sebastian/master/screenshots/select_scrape.jpg)
+![select_data](https://raw.githubusercontent.com/ecmma/sebastian/master/imgs/select_scrape.jpg)
 
 ### Download!
-![download](https://raw.githubusercontent.com/ecmma/sebastian/master/screenshots/download.jpg)
+![download](https://raw.githubusercontent.com/ecmma/sebastian/master/imgs/download.jpg)

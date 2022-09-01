@@ -4,7 +4,9 @@
 > [ariel](https://ariel.unimi.it/), but not only -- via CLI.
 
 ### Important: state
-First of all, thank you for your interest. If you have a feature you have in
+First of all, thank you for your interest.
+`sebastian` is less than a week old and the only 'working' feature as of now is `ariel`.
+If you have a feature you have in
 mind please create a new issue or, if you have some time on your hands, file a
 PR. 
 

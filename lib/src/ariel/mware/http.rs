@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use super::m3u8;
 use async_trait::async_trait;
 use reqwest::Client;
 
@@ -26,8 +25,7 @@ impl ArielMiddleware for HttpArielMiddleware {
         Self: Sized,
     {
         let cookies = std::sync::Arc::new(reqwest_cookie_store::CookieStoreMutex::default());
-        let user_agent =
-            String::from("Mozilla/5.0 (X11; Linux x86_64; rv:104.0) Gecko/20100101 Firefox/104.0");
+        let user_agent = String::from("Sebastian");
         let client = reqwest::Client::builder()
             .cookie_store(true)
             .cookie_provider(cookies.clone())

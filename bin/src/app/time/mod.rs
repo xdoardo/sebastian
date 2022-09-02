@@ -21,6 +21,8 @@ pub enum TimeTableAction {
     Show,
 }
 
+
+#[allow(unused)]
 impl Time {
     pub(crate) async fn run(
         &mut self,

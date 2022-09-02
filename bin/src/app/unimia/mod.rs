@@ -20,6 +20,7 @@ pub enum UnimiaAction {
     Init,
 }
 
+#[allow(unused)]
 impl Unimia {
     pub(crate) async fn run(
         &mut self,

@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use url::Url;
 
 pub struct ArielLoginPage {}

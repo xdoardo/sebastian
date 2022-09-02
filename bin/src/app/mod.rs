@@ -64,6 +64,7 @@ impl App {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub(crate) struct AppConfig {
     pub config_path: String,
 

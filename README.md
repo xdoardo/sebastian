@@ -69,7 +69,7 @@ SUBCOMMANDS:
 
 ## Screenshots 
 ### Select courses to scrape from root ( -- or specify an URL yourself!)
-![select_course](https://raw.githubusercontent.com/ecmma/sebastian/master/imgs/scrape_root.png)
+![select_course](imgs/scrape.gif)
 
 ### Select data to scrape
 ![select_data](https://raw.githubusercontent.com/ecmma/sebastian/master/imgs/select_scrape.jpg)

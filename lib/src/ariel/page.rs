@@ -2,6 +2,13 @@ use url::Url;
 
 pub struct ArielLoginPage {}
 impl ArielLoginPage {
+    pub fn is_login_page_raw(raw: &bytes::Bytes) -> bool {
+        let matcher = "cvLogin";
+        raw.windows(matcher.len()).any(|w| {
+            let m = String::from_utf8_lossy(w);
+            m == matcher
+        })
+    }
     pub fn is_logged_in(raw: String) -> anyhow::Result<()> {
         let mut options = tl::ParserOptions::new();
         options = options.track_ids();
@@ -344,7 +351,7 @@ impl ArielPage {
     }
 
     pub fn get_data(&self) -> Vec<ArielPageData> {
-        let mut res = vec![];
+        let mut res = std::collections::HashMap::new();
         let parser = self.soup.get_ref().parser();
 
         for child in self.soup.get_ref().children() {
@@ -353,7 +360,7 @@ impl ArielPage {
                     if child.name() == "html" {
                         for child in child.children().all(parser) {
                             if let tl::Node::Tag(child) = child {
-                                log::info!("\n\n\ndoing child {:?}\n\n\n", child);
+                                log::debug!("\n\n\ndoing child {:?}\n\n\n", child);
                                 if child.name() == "tr" {
                                     let mut title = String::new();
 
@@ -397,14 +404,26 @@ impl ArielPage {
                                                             )
                                                             .unwrap();
                                                         let kind = ArielPageDataKind::Generic;
-                                                        res.push(ArielPageData {
+                                                        log::info!(
+                                                            "pushing {}, {}, {:?}",
+                                                            name,
+                                                            url,
+                                                            kind
+                                                        );
+                                                        let pagedata = ArielPageData {
                                                             from_site: self.get_site_name(),
                                                             from_ambient: self.get_title(),
                                                             from_thread: title.clone(),
                                                             name,
                                                             url,
                                                             kind,
-                                                        })
+                                                        };
+                                                        if !res.contains_key(&pagedata.url) {
+                                                            res.insert(
+                                                                pagedata.url.clone(),
+                                                                pagedata,
+                                                            );
+                                                        }
                                                     }
                                                 }
                                             } else if let Some(Some(r#type)) =
@@ -418,14 +437,22 @@ impl ArielPage {
                                                             .as_utf8_str()
                                                             .parse::<url::Url>()
                                                             .unwrap();
-                                                        res.push(ArielPageData {
+
+                                                        log::info!("pushing {}", url);
+                                                        let pagedata = ArielPageData {
                                                             from_site: self.get_site_name(),
                                                             from_ambient: self.get_title(),
                                                             from_thread: title.clone(),
                                                             name: format!("recording_{}", title),
                                                             url,
                                                             kind: ArielPageDataKind::LessonStream,
-                                                        })
+                                                        };
+                                                        if !res.contains_key(&pagedata.url) {
+                                                            res.insert(
+                                                                pagedata.url.clone(),
+                                                                pagedata,
+                                                            );
+                                                        }
                                                     }
                                                 }
                                             }
@@ -438,6 +465,7 @@ impl ArielPage {
                 }
             }
         }
+        let res = res.values().cloned().collect();
         log::info!("{} produced {:?}", self.url, res);
         res
     }

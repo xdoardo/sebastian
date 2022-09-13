@@ -236,6 +236,11 @@ impl HttpArielMiddleware {
         for chunk in chunks {
             bytes = self.get_bytes(chunk.uri).await?;
 
+            while ArielLoginPage::is_login_page_raw(&bytes) {
+                self.login().await?;
+                bytes = self.get_bytes(data.url.to_string()).await?;
+            }
+
             let len = bytes.len();
 
             std::io::Write::write_all(&mut file, &bytes)?;
@@ -251,29 +256,38 @@ impl HttpArielMiddleware {
         data: ArielPageData,
         chunk_done_size_chan: std::sync::mpsc::Sender<u64>,
     ) -> anyhow::Result<()> {
-        let mut path = PathBuf::from(path);
-        path.push(heck::AsSnakeCase(data.from_site.clone()).to_string());
-        path.push(heck::AsSnakeCase(data.from_ambient.clone()).to_string());
-        path.push(heck::AsSnakeCase(data.from_thread.clone()).to_string());
-        path.push(data.get_name());
-        log::info!("trying to download {} into {:?}", data.url, path.to_str());
+        let mut path_buf = PathBuf::from(path.clone());
+        path_buf.push(heck::AsSnakeCase(data.from_site.clone()).to_string());
+        path_buf.push(heck::AsSnakeCase(data.from_ambient.clone()).to_string());
+        path_buf.push(heck::AsSnakeCase(data.from_thread.clone()).to_string());
+        path_buf.push(data.get_name());
+        log::info!(
+            "trying to download {} into {:?}",
+            data.url,
+            path_buf.to_str()
+        );
 
-        let bytes = self.get_bytes(data.url.to_string()).await?;
+        let mut bytes = self.get_bytes(data.url.to_string()).await?;
+
+        while ArielLoginPage::is_login_page_raw(&bytes) {
+            self.login().await?;
+            bytes = self.get_bytes(data.url.to_string()).await?;
+        }
 
         let len = bytes.len();
 
         chunk_done_size_chan.send(len.try_into().unwrap())?;
 
-        if !path.exists() {
-            log::trace!("creating path {:?}", path);
-            std::fs::create_dir_all(path.parent().unwrap())?
+        if !path_buf.exists() {
+            log::trace!("creating path {:?}", path_buf);
+            std::fs::create_dir_all(path_buf.parent().unwrap())?
         }
 
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(path)?;
+            .open(path_buf)?;
 
         std::io::Write::write_all(&mut file, &bytes)?;
 
